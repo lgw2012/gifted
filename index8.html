@@ -1,0 +1,181 @@
+<html>
+<head>
+<title>자세 분석기</title>
+<style>
+    /* General body styling */
+    body {
+        font-family: 'Arial', sans-serif;
+        background: linear-gradient(135deg, #d3c0f5, #f1e6fa); /* 차분한 파스텔톤 그라데이션 배경 */
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: #333;
+        overflow: hidden;
+    }
+
+    /* Title styling */
+    h1 {
+        font-size: 3rem;
+        color: #4CAF50;
+        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    /* Container for webcam and predictions */
+    #webcam-container {
+        border: 2px solid #ffffff;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        padding: 15px;
+        background-color: rgba(255, 255, 255, 0.8); /* 반투명 배경 */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #label-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 20px;
+        max-width: 350px;
+        width: 100%;
+    }
+
+    #label-container div {
+        background-color: rgba(255, 255, 255, 0.6);
+        margin: 10px 0;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        text-align: center;
+        font-size: 1.2rem;
+        color: #333;
+        transition: transform 0.3s ease, background-color 0.3s ease;
+    }
+
+    #label-container div:hover {
+        transform: scale(1.05);
+        background-color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Button styling */
+    button {
+        background-color: #6c63ff;
+        color: white;
+        padding: 18px 40px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    button:hover {
+        background-color: #5a54e2;
+        transform: scale(1.05);
+    }
+
+    button:focus {
+        outline: none;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 2rem;
+        }
+
+        button {
+            font-size: 1.2rem;
+            padding: 14px 28px;
+        }
+
+        #webcam-container {
+            width: 90%;
+            margin-bottom: 20px;
+        }
+
+        #label-container {
+            width: 90%;
+        }
+
+        #label-container div {
+            font-size: 1rem;
+            padding: 12px;
+        }
+    }
+</style>
+</head>
+
+<body>
+    <h1>자세 분석기</h1> <!-- 제목 수정 -->
+    <button type="button" onclick="init()">Start</button>
+
+    <div id="webcam-container"></div>
+    <div id="label-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <script type="text/javascript">
+        // The link to your model provided by Teachable Machine export panel
+        const URL = "https://teachablemachine.withgoogle.com/models/InURak7ce/";
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        // Load the image model and setup the webcam
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            // Load the model and metadata
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            // Setup the webcam
+            const flip = true; // whether to flip the webcam
+            webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
+            await webcam.setup(); // request access to the webcam
+            await webcam.play();
+            window.requestAnimationFrame(loop);
+
+            // Append elements to the DOM
+            document.getElementById("webcam-container").appendChild(webcam.canvas);
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) { // add class labels
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        // Update the webcam and make predictions
+        async function loop() {
+            webcam.update(); // update the webcam frame
+            await predict();
+            window.requestAnimationFrame(loop);
+        }
+
+        // Run the webcam image through the image model
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+
+            // Mapping class names to your desired labels
+            const classLabels = ["바른자세", "바르지 않은 자세"];  // Adjust class labels here if necessary
+
+            for (let i = 0; i < maxPredictions; i++) {
+                // Multiply the probability by 100 to get percentage
+                const percentage = (prediction[i].probability * 100).toFixed(2);
+
+                const classPrediction = 
+                    classLabels[i] + ": " + percentage + "%";  // Show percentage as the probability
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+    </script>
+</body>
+</html>
